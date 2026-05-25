@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Tareas</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #333; }
+    input, textarea, select { width: 100%; padding: 8px; margin: 5px 0 10px; box-sizing: border-box; }
+    button { background: #007bff; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #0056b3; }
+    .tarea { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 4px; }
+    .pendiente { border-left: 4px solid #ffc107; }
+    .en_progreso { border-left: 4px solid #17a2b8; }
+    .completada { border-left: 4px solid #28a745; }
+  </style>
+</head>
+<body>
+  <h1>Sistema de Gestión de Tareas</h1>
+
+  <h2>Nueva Tarea</h2>
+  <input type="text" id="titulo" placeholder="Título de la tarea" />
+  <textarea id="descripcion" placeholder="Descripción (opcional)" rows="3"></textarea>
+  <button onclick="crearTarea()">Crear Tarea</button>
+
+  <h2>Tareas</h2>
+  <div id="lista-tareas"></div>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+
+    async function cargarTareas() {
+      const res = await fetch(`${API}/tareas`);
+      const tareas = await res.json();
+      const lista = document.getElementById('lista-tareas');
+      lista.innerHTML = '';
+      tareas.forEach(t => {
+        lista.innerHTML += `
+          <div class="tarea ${t.estado}">
+            <strong>${t.titulo}</strong> — <em>${t.estado}</em>
+            <p>${t.descripcion || ''}</p>
+            <select onchange="cambiarEstado(${t.id}, this.value)">
+              <option ${t.estado === 'pendiente' ? 'selected' : ''}>pendiente</option>
+              <option ${t.estado === 'en_progreso' ? 'selected' : ''}>en_progreso</option>
+              <option ${t.estado === 'completada' ? 'selected' : ''}>completada</option>
+            </select>
+            <button onclick="eliminarTarea(${t.id})">Eliminar</button>
+          </div>`;
+      });
+    }
+
+    async function crearTarea() {
+      const titulo = document.getElementById('titulo').value;
+      const descripcion = document.getElementById('descripcion').value;
+      if (!titulo) return alert('El título es obligatorio');
+      await fetch(`${API}/tareas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo, descripcion })
+      });
+      document.getElementById('titulo').value = '';
+      document.getElementById('descripcion').value = '';
+      cargarTareas();
+    }
+
+    async function cambiarEstado(id, estado) {
+      const res = await fetch(`${API}/tareas/${id}`);
+      const tarea = await res.json();
+      await fetch(`${API}/tareas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: tarea.titulo, descripcion: tarea.descripcion, estado })
+      });
+      cargarTareas();
+    }
+
+    async function eliminarTarea(id) {
+      await fetch(`${API}/tareas/${id}`, { method: 'DELETE' });
+      cargarTareas();
+    }
+
+    cargarTareas();
+  </script>
+</body>
+</html>
